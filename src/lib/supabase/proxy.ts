@@ -7,13 +7,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } =
-    getSupabaseEnv();
+  const { url, key } = getSupabaseEnv();
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    key,
     {
       cookies: {
         getAll() {

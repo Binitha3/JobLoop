@@ -24,8 +24,10 @@ authentication, tenant-isolated database schema, and print-shop demo data.
    `supabase/seed.sql`. The Studio URL and local API keys are printed by
    `supabase start`.
 
-3. Copy `.env.example` to `.env.local`. Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` to
-   the local anon key from `supabase status` (and keep the URL at
+3. Copy `.env.example` to `.env.local`. Set
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the local publishable key from
+   `supabase status` (or use the legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` name),
+   and keep the URL at
    `http://127.0.0.1:54321`).
 4. Install dependencies and run the web app:
 
@@ -45,7 +47,7 @@ the names and phone numbers are synthetic.
 
 ## Use a hosted Supabase project
 
-1. Create a Supabase project and copy its Project URL and anon/public key into
+1. Create a Supabase project and copy its Project URL and publishable key into
    `.env.local` (use `.env.example` as the template).
 2. Link the Supabase CLI and apply the schema:
 
@@ -59,7 +61,7 @@ the names and phone numbers are synthetic.
    catalogue and orders.
 4. Start JobLoop with `npm run dev`.
 
-Only the public anon key belongs in this frontend configuration. Never expose
+Only the public publishable/anon key belongs in this frontend configuration. Never expose
 the Supabase service-role key in a `NEXT_PUBLIC_` variable or commit it.
 
 ## Phase 1 structure
@@ -94,7 +96,7 @@ npm run build
 
 ## Current scope
 
-The login/signup flow, owner workspace provisioning, database schema, RLS,
-private order-file bucket, and seeded print-shop data are Phase 1. Customer and
-order management, quote generation, AI extraction, public tracking UI, and
-dashboard workflows are implemented in the following phases.
+The login/signup flow, owner workspace provisioning, tenant-isolated database,
+private order-file bucket, customer management, order creation and status
+history, and data-backed dashboard are implemented. Quote generation, AI
+extraction, and public tracking UI are not included in the current scope.

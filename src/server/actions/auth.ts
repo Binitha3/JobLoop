@@ -32,7 +32,7 @@ export async function signIn(
     return {
       status: "error",
       message:
-        "Connect Supabase first. Copy .env.example to .env.local and add your project URL and anon key.",
+        "Connect Supabase first. Copy .env.example to .env.local and add your project URL and publishable key.",
     };
   }
 
@@ -66,7 +66,7 @@ export async function signUp(
     return {
       status: "error",
       message:
-        "Connect Supabase first. Copy .env.example to .env.local and add your project URL and anon key.",
+        "Connect Supabase first. Copy .env.example to .env.local and add your project URL and publishable key.",
     };
   }
 

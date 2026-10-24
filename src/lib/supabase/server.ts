@@ -4,12 +4,11 @@ import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export async function createClient() {
   const cookieStore = await cookies();
-  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } =
-    getSupabaseEnv();
+  const { url, key } = getSupabaseEnv();
 
   return createServerClient(
-    NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url,
+    key,
     {
       cookies: {
         getAll() {

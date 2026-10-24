@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowUpRight, ClipboardList, PackageCheck, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
+import { getWorkspaceId } from "@/lib/supabase/workspace";
+import { getOrderStatusLabel, isOrderStatus } from "@/lib/orders/status";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export const metadata: Metadata = { title: "Dashboard" };
+
+const money = (amount: number, currency: string) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency,
+  }).format(amount);
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,125 +19,217 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (membershipError) {
-    throw new Error(`Unable to load workspace membership: ${membershipError.message}`);
-  }
-
-  if (!membership) {
-    throw new Error(
-      "No workspace is connected to this account. Apply the Supabase migrations and sign in again.",
-    );
-  }
-
+  const workspaceId = await getWorkspaceId(supabase, user.id);
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
-    .select("name")
-    .eq("id", membership.workspace_id)
+    .select("name, currency, timezone")
+    .eq("id", workspaceId)
     .single();
 
   if (workspaceError) {
     throw new Error(`Unable to load workspace: ${workspaceError.message}`);
   }
 
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: workspace.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [
+    { count: pendingQuotes, error: quoteError },
+    { count: dueToday, error: dueError },
+    { count: cancelledOrders, error: cancelledError },
+    { data: balances, error: balanceError },
+    { data: orders, error: ordersError },
+  ] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select("id, orders!inner(status)", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .in("status", ["draft", "sent"])
+      .neq("orders.status", "cancelled"),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("due_date", today)
+      .not("status", "in", "(delivered,cancelled)"),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("status", "cancelled"),
+    supabase
+      .from("orders")
+      .select("balance_due")
+      .eq("workspace_id", workspaceId)
+      .gt("balance_due", 0)
+      .neq("status", "cancelled"),
+    supabase
+      .from("orders")
+      .select("id, order_number, customer_id, status, due_date, balance_due")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  if (quoteError) throw new Error(`Unable to load pending quotes: ${quoteError.message}`);
+  if (dueError) throw new Error(`Unable to load orders due today: ${dueError.message}`);
+  if (cancelledError) {
+    throw new Error(`Unable to load cancelled orders: ${cancelledError.message}`);
+  }
+  if (balanceError) throw new Error(`Unable to load outstanding payments: ${balanceError.message}`);
+  if (ordersError) throw new Error(`Unable to load orders: ${ordersError.message}`);
+
+  const orderRows = orders ?? [];
+  const customerIds = [...new Set(orderRows.map((order) => order.customer_id))];
+  const orderIds = orderRows.map((order) => order.id);
+  const [{ data: customers, error: customersError }, { data: items, error: itemsError }] =
+    await Promise.all([
+      customerIds.length
+        ? supabase.from("customers").select("id, name").in("id", customerIds)
+        : Promise.resolve({ data: [], error: null }),
+      orderIds.length
+        ? supabase
+            .from("order_items")
+            .select("order_id, service_id")
+            .in("order_id", orderIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  if (customersError) throw new Error(`Unable to load order customers: ${customersError.message}`);
+  if (itemsError) throw new Error(`Unable to load order services: ${itemsError.message}`);
+
+  const serviceIds = [...new Set((items ?? []).map((item) => item.service_id))];
+  const { data: services, error: servicesError } = serviceIds.length
+    ? await supabase.from("services").select("id, name").in("id", serviceIds)
+    : { data: [], error: null };
+
+  if (servicesError) throw new Error(`Unable to load order services: ${servicesError.message}`);
+
+  const customerById = new Map((customers ?? []).map((customer) => [customer.id, customer.name]));
+  const serviceById = new Map((services ?? []).map((service) => [service.id, service.name]));
+  const servicesByOrder = new Map<string, string[]>();
+
+  for (const item of items ?? []) {
+    const serviceName = serviceById.get(item.service_id);
+    if (!serviceName) continue;
+    const orderServices = servicesByOrder.get(item.order_id) ?? [];
+    if (!orderServices.includes(serviceName)) orderServices.push(serviceName);
+    servicesByOrder.set(item.order_id, orderServices);
+  }
+
+  const outstandingTotal = (balances ?? []).reduce(
+    (sum, order) => sum + Number(order.balance_due),
+    0,
+  );
+
   return (
     <div className="space-y-8">
-      <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <p className="text-sm font-medium text-indigo-600">
-            {workspace.name}
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-            Your work, at a glance
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            A calmer way to move every print job from the first enquiry to
-            delivery.
-          </p>
+          <p className="text-sm text-slate-600">{workspace.name}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Dashboard</h1>
         </div>
-        <Button disabled type="button">
-          New order
-          <ArrowUpRight aria-hidden="true" className="size-4" />
-        </Button>
+        {orderRows.length > 0 && (
+          <Link
+            className="inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
+            href="/orders/new"
+          >
+            New order
+          </Link>
+        )}
+      </header>
+
+      <section aria-label="Workspace metrics" className="overflow-x-auto border-y border-slate-200">
+        <table className="w-full min-w-[720px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+              <th className="px-4 py-3 font-medium">Pending quotes</th>
+              <th className="px-4 py-3 font-medium">Orders due today</th>
+              <th className="px-4 py-3 font-medium">Outstanding payments</th>
+              <th className="px-4 py-3 font-medium">Cancelled orders</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="text-xl font-semibold">
+              <td className="px-4 py-4">{pendingQuotes ?? 0}</td>
+              <td className="px-4 py-4">{dueToday ?? 0}</td>
+              <td className="px-4 py-4">{money(outstandingTotal, workspace.currency)}</td>
+              <td className="px-4 py-4">{cancelledOrders ?? 0}</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <section aria-label="Workspace setup" className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/[0.02]">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-            <Users aria-hidden="true" className="size-5" />
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Orders</h2>
+        {orderRows.length === 0 ? (
+          <div className="border-y border-slate-200 py-6">
+            <p className="text-sm text-slate-600">
+              No orders yet; create your first order to get started.
+            </p>
+            <Link
+              className="mt-4 inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
+              href="/orders/new"
+            >
+              New order
+            </Link>
           </div>
-          <h2 className="mt-5 text-base font-semibold text-slate-900">
-            Keep customer details together
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Save contacts and the way they found your shop, so every new request
-            starts with context.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/[0.02]">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-            <ClipboardList aria-hidden="true" className="size-5" />
+        ) : (
+          <div className="overflow-x-auto border-y border-slate-200">
+            <table className="w-full min-w-[850px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-3 font-medium">Job number</th>
+                  <th className="px-3 py-3 font-medium">Customer</th>
+                  <th className="px-3 py-3 font-medium">Service</th>
+                  <th className="px-3 py-3 font-medium">Status</th>
+                  <th className="px-3 py-3 font-medium">Due date</th>
+                  <th className="px-3 py-3 text-right font-medium">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderRows.map((order) => (
+                  <tr className="border-b border-slate-100 last:border-0" key={order.id}>
+                    <td className="px-3 py-3 font-medium">
+                      <Link
+                        className="underline underline-offset-4"
+                        href={`/orders/${order.id}`}
+                      >
+                        {order.order_number}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3">
+                      {customerById.get(order.customer_id) ?? "Customer"}
+                    </td>
+                    <td className="px-3 py-3 text-slate-600">
+                      {servicesByOrder.get(order.id)?.join(", ") || "—"}
+                    </td>
+                    <td className="px-3 py-3">
+                      {isOrderStatus(order.status)
+                        ? getOrderStatusLabel(order.status)
+                        : order.status}
+                    </td>
+                    <td className="px-3 py-3 text-slate-600">
+                      {order.due_date
+                        ? new Date(`${order.due_date}T00:00:00Z`).toLocaleDateString(
+                            "en-IN",
+                            { timeZone: "UTC" },
+                          )
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      {money(Number(order.balance_due), workspace.currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <h2 className="mt-5 text-base font-semibold text-slate-900">
-            Quote with confidence
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Build a reusable print catalogue with sizes, materials and finishes
-            that match how you price.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-900/[0.02]">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-            <PackageCheck aria-hidden="true" className="size-5" />
-          </div>
-          <h2 className="mt-5 text-base font-semibold text-slate-900">
-            See each job through
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Track approvals, production, due dates and payments from one shared
-            workspace.
-          </p>
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 sm:p-8">
-        <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-600">
-            Getting started
-          </p>
-          <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">
-            Your workspace is ready for its first job.
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            JobLoop keeps your team in control. You review every quote and
-            customer update before it goes out; AI suggestions will never create
-            an order on their own.
-          </p>
-        </div>
-        <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-            Private workspace
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-            Owner access
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
-            Print-shop ready
-          </span>
-        </div>
+        )}
       </section>
     </div>
   );

@@ -20,7 +20,7 @@ body {
 
 .auth-background {
   background:
-    radial-gradient(ellipse at top left, rgb(224 231 255 / 72%), transparent 38rem),
-    radial-gradient(ellipse at bottom right, rgb(224 231 255 / 58%), transparent 34rem),
+    radial-gradient(ellipse at top left, rgb(226 232 240 / 72%), transparent 38rem),
+    radial-gradient(ellipse at bottom right, rgb(226 232 240 / 58%), transparent 34rem),
     #f8fafc;
 }

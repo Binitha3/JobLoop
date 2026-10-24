@@ -38,20 +38,17 @@ export function AuthForm({ mode, setupRequired = false }: AuthFormProps) {
     <div className="w-full max-w-md">
       <Link
         aria-label="JobLoop home"
-        className="mb-9 inline-flex items-center gap-3"
+        className="mb-9 inline-flex items-center"
         href="/"
       >
-        <span className="grid size-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
-          <span className="text-lg font-bold tracking-tight">J</span>
-        </span>
         <span className="text-xl font-bold tracking-tight text-slate-950">
           JobLoop
         </span>
       </Link>
 
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl shadow-slate-900/[0.04] sm:p-9">
+      <div className="rounded border border-slate-200/80 bg-white p-7 sm:p-9">
         <div className="mb-8">
-          <p className="mb-2 text-sm font-semibold text-indigo-600">
+          <p className="mb-2 text-sm font-semibold text-slate-600">
             Your work, in a better loop
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
@@ -66,17 +63,17 @@ export function AuthForm({ mode, setupRequired = false }: AuthFormProps) {
 
         {setupRequired && (
           <div
-            className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-900"
+            className="mb-5 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-900"
             role="status"
           >
-            Add your Supabase URL and anon key to <code>.env.local</code> to
+            Add your Supabase URL and publishable key to <code>.env.local</code> to
             enable sign-in.
           </div>
         )}
 
         {state.message && (
           <div
-            className={`mb-5 rounded-xl border px-4 py-3 text-sm leading-5 ${
+            className={`mb-5 rounded border px-4 py-3 text-sm leading-5 ${
               state.status === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                 : "border-rose-200 bg-rose-50 text-rose-800"
@@ -193,7 +190,7 @@ export function AuthForm({ mode, setupRequired = false }: AuthFormProps) {
         <p className="mt-7 text-center text-sm text-slate-500">
           {isSignup ? "Already using JobLoop?" : "New to JobLoop?"}{" "}
           <Link
-            className="font-semibold text-indigo-600 hover:text-indigo-700"
+            className="font-semibold text-slate-900 underline underline-offset-4"
             href={isSignup ? "/login" : "/signup"}
           >
             {isSignup ? "Sign in" : "Create an account"}
