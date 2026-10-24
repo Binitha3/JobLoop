@@ -15,7 +15,7 @@ type ServiceOption = {
   id: string;
   name: string;
   unit: string;
-  base_price: number;
+  base_price: number | null;
 };
 
 type LineItem = {
@@ -220,9 +220,10 @@ export function OrderForm({
                       );
                       updateItem(index, {
                         serviceId: event.target.value,
-                        unitPrice: selected
-                          ? String(selected.base_price)
-                          : "",
+                        unitPrice:
+                          selected?.base_price == null
+                            ? ""
+                            : String(selected.base_price),
                       });
                     }}
                     required
@@ -232,6 +233,7 @@ export function OrderForm({
                     {services.map((service) => (
                       <option key={service.id} value={service.id}>
                         {service.name} ({service.unit})
+                        {service.base_price === null ? " — price not set" : ""}
                       </option>
                     ))}
                   </select>

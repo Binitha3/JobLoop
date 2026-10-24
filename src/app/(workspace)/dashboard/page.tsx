@@ -134,12 +134,20 @@ export default async function DashboardPage() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Dashboard</h1>
         </div>
         {orderRows.length > 0 && (
-          <Link
-            className="inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
-            href="/orders/new"
-          >
-            New order
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              href="/orders/from-message"
+            >
+              Paste message
+            </Link>
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
+              href="/orders/new"
+            >
+              New order
+            </Link>
+          </div>
         )}
       </header>
 
@@ -171,12 +179,20 @@ export default async function DashboardPage() {
             <p className="text-sm text-slate-600">
               No orders yet; create your first order to get started.
             </p>
-            <Link
-              className="mt-4 inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
-              href="/orders/new"
-            >
-              New order
-            </Link>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                className="inline-flex h-10 items-center justify-center rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                href="/orders/from-message"
+              >
+                Paste message
+              </Link>
+              <Link
+                className="inline-flex h-10 items-center justify-center rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700"
+                href="/orders/new"
+              >
+                New order
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto border-y border-slate-200">
