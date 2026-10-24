@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JobLoop
 
-## Getting Started
+JobLoop is an order-to-delivery workspace for print shops and custom
+merchandise businesses. Phase 1 establishes the Next.js app, Supabase
+authentication, tenant-isolated database schema, and print-shop demo data.
 
-First, run the development server:
+## Requirements
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 20.9 or newer
+- npm
+- A Supabase project (local Supabase requires Docker and the Supabase CLI)
+
+## Run locally with Supabase
+
+1. Install the Supabase CLI using the [official installation guide](https://supabase.com/docs/guides/cli).
+2. Start the local Supabase services and apply the migration and seed:
+
+   ```powershell
+   supabase start
+   supabase db reset
+   ```
+
+   `supabase db reset` applies the files in `supabase/migrations/` and runs
+   `supabase/seed.sql`. The Studio URL and local API keys are printed by
+   `supabase start`.
+
+3. Copy `.env.example` to `.env.local`. Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` to
+   the local anon key from `supabase status` (and keep the URL at
+   `http://127.0.0.1:54321`).
+4. Install dependencies and run the web app:
+
+   ```powershell
+   npm install
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) and create an account.
+   The database trigger provisions the owner workspace at signup.
+
+To load the demo orders into the account's workspace, register with
+`demo@jobloop.local`, then run `supabase/seed.sql` again in the local Supabase
+Studio SQL editor. The seed is repeatable and connects the demo workspace to
+that account. Demo email addresses use the reserved `example.com` domain and
+the names and phone numbers are synthetic.
+
+## Use a hosted Supabase project
+
+1. Create a Supabase project and copy its Project URL and anon/public key into
+   `.env.local` (use `.env.example` as the template).
+2. Link the Supabase CLI and apply the schema:
+
+   ```powershell
+   supabase login
+   supabase link --project-ref YOUR_PROJECT_REF
+   supabase db push
+   ```
+
+3. Run `supabase/seed.sql` in the project's SQL editor if you want the demo
+   catalogue and orders.
+4. Start JobLoop with `npm run dev`.
+
+Only the public anon key belongs in this frontend configuration. Never expose
+the Supabase service-role key in a `NEXT_PUBLIC_` variable or commit it.
+
+## Phase 1 structure
+
+```text
+src/
+  app/                  App Router pages and layouts
+  components/           Auth and reusable UI
+  lib/
+    supabase/           Browser, server, and proxy clients
+    validators/         Zod schemas
+  server/actions/       Validated server actions
+supabase/
+  migrations/           PostgreSQL schema, RLS, auth trigger, storage policies
+  seed.sql              Print-shop catalogue and 25 customers / 40 orders
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The initial migration creates workspace membership, customers, configurable
+services and options, orders and line items, quotes, payments, audit events,
+attachments, and tracking tokens. Every tenant-owned table has RLS policies
+based on the signed-in user's workspace membership. The public tracking
+function returns only customer-safe order fields; it does not expose internal
+notes or other workspace records.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-## Learn More
+## Current scope
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The login/signup flow, owner workspace provisioning, database schema, RLS,
+private order-file bucket, and seeded print-shop data are Phase 1. Customer and
+order management, quote generation, AI extraction, public tracking UI, and
+dashboard workflows are implemented in the following phases.
