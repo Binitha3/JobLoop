@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildExtractOrderPrompt, extractOrderSchema, extractOrderSystemPrompt } from "@/lib/ai/extractOrder";
-import { generateStructured } from "@/lib/ai/generateStructured";
+import { AIServiceError, generateStructured } from "@/lib/ai/generateStructured";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceId } from "@/lib/supabase/workspace";
 import { z } from "zod";
@@ -144,10 +144,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json(sanitized);
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "The AI service could not extract the order details.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error("AI order extraction failed", error);
+    if (error instanceof AIServiceError) {
+      const status =
+        error.kind === "temporary" ? 503 :
+        error.kind === "quota" ? 429 :
+        error.kind === "configuration" ? 500 : 502;
+      return NextResponse.json(
+        { error: error.message, retryable: error.kind === "temporary" },
+        { status },
+      );
+    }
+    return NextResponse.json(
+      { error: "Unable to extract order details. Please try again.", retryable: false },
+      { status: 502 },
+    );
   }
 }

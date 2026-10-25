@@ -55,6 +55,7 @@ export function MessageOrderReview({
   const [prices, setPrices] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
+  const [extractErrorRetryable, setExtractErrorRetryable] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
   const [state, formAction, creating] = useActionState(
     createOrder,
@@ -71,6 +72,7 @@ export function MessageOrderReview({
 
   async function extractDetails() {
     setExtractError("");
+    setExtractErrorRetryable(false);
     setCopyMessage("");
     setExtracted(null);
     setPrices([]);
@@ -89,14 +91,19 @@ export function MessageOrderReview({
       });
       const result: unknown = await response.json();
       if (!response.ok) {
-        const errorMessage =
-          typeof result === "object" &&
+        const errorMessage = typeof result === "object" &&
           result !== null &&
           "error" in result &&
           typeof result.error === "string"
             ? result.error
-            : "Unable to extract order details. Try again.";
+            : "Unable to extract order details. Please try again.";
         setExtractError(errorMessage);
+        setExtractErrorRetryable(
+          typeof result === "object" &&
+          result !== null &&
+          "retryable" in result &&
+          result.retryable === true,
+        );
         return;
       }
 
@@ -117,6 +124,7 @@ export function MessageOrderReview({
       );
     } catch {
       setExtractError("Unable to reach the extraction service. Your pasted message is still here.");
+      setExtractErrorRetryable(true);
     } finally {
       setExtracting(false);
     }
@@ -289,6 +297,7 @@ export function MessageOrderReview({
               setExtracted(null);
               setPrices([]);
               setExtractError("Message changed. Extract the updated message before creating an order.");
+              setExtractErrorRetryable(false);
             }
           }}
           placeholder="Paste a WhatsApp message, email, or customer note..."
@@ -300,7 +309,11 @@ export function MessageOrderReview({
           </p>
         )}
         <Button disabled={extracting} onClick={extractDetails} type="button">
-          {extracting ? "Extracting details…" : "Extract details"}
+          {extracting
+            ? "Extracting details…"
+            : extractErrorRetryable
+              ? "Try again"
+              : "Extract details"}
         </Button>
       </section>
 
