@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 vi.mock("server-only", () => ({}));
 
 import { extractOrderSchema } from "./extractOrder";
@@ -66,6 +67,27 @@ describe("generateStructured", () => {
     const retryRequest = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(retryRequest.messages[1].content).toContain("failed schema validation");
     expect(retryRequest.messages[1].content).toContain("customer_name");
+  });
+
+  it("sends an optional image to the vision model and validates its response", async () => {
+    configureAI();
+    const fetchMock = vi.fn().mockResolvedValue(
+      providerResponse(JSON.stringify({ notes: ["Small text may be difficult to read."] })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await generateStructured({
+      system: "Review this artwork.",
+      user: "List visible concerns.",
+      image: { mimeType: "image/jpeg", base64: "c21hbGw=" },
+      schema: z.object({ notes: z.array(z.string()) }),
+    });
+
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(request.messages[1].content[1].image_url.url).toBe(
+      "data:image/jpeg;base64,c21hbGw=",
+    );
+    expect(result).toEqual({ notes: ["Small text may be difficult to read."] });
   });
 
   it("returns a clear error after the retry is still invalid", async () => {

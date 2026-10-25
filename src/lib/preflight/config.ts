@@ -1,0 +1,22 @@
+export const PREFLIGHT_THRESHOLDS = {
+  passDpi: 150,
+  warnDpi: 100,
+  largeBannerPassDpi: 72,
+  largeBannerWarnDpi: 50,
+  largeBannerWidthFeet: 3,
+  aspectWarnPercent: 2,
+  aspectFailPercent: 10,
+  bleedTolerancePercent: 1,
+  safeZoneMillimeters: 3,
+  backgroundColorDistance: 45,
+  backgroundColorQuantization: 16,
+  borderSampleFraction: 0.04,
+  // Laplacian variance is a heuristic and may flag flat, minimal artwork incorrectly.
+  sharpnessWarningVariance: 35,
+  smallJpegBytes: 500_000,
+  largePrintWidthInches: 36,
+  maxUploadBytes: 25 * 1024 * 1024,
+  maxVisionDimensionPixels: 1024,
+  pixelSampleDimension: 256,
+  sharpnessSampleDimension: 128,
+} as const;

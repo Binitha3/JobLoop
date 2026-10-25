@@ -11,11 +11,26 @@ import { getWorkspaceId } from "@/lib/supabase/workspace";
 
 export type OrderActionState = { message: string };
 
-const orderItemSchema = z.object({
-  service_id: z.string().uuid(),
-  quantity: z.number().positive().max(1_000_000),
-  unit_price: z.number().min(0).max(1_000_000_000),
-});
+const orderItemSchema = z
+  .object({
+    service_id: z.string().uuid(),
+    quantity: z.number().positive().max(1_000_000),
+    unit_price: z.number().min(0).max(1_000_000_000),
+    print_width: z.number().positive().max(100_000).nullable().optional(),
+    print_height: z.number().positive().max(100_000).nullable().optional(),
+    print_unit: z.enum(["mm", "cm", "in", "ft"]).nullable().optional(),
+    bleed_mm: z.number().min(0).max(1_000).optional(),
+  })
+  .superRefine((item, context) => {
+    const hasWidth = item.print_width != null;
+    const hasHeight = item.print_height != null;
+    if (hasWidth !== hasHeight || (hasWidth && !item.print_unit)) {
+      context.addIssue({
+        code: "custom",
+        message: "Enter both print dimensions and their unit.",
+      });
+    }
+  });
 
 const newCustomerSchema = z.object({
   name: z.string().trim().min(1).max(160),

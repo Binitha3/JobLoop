@@ -27,6 +27,20 @@ type CustomerOption = {
   phone: string | null;
 };
 
+type LinePrintSize = {
+  width: string;
+  height: string;
+  unit: "mm" | "cm" | "in" | "ft";
+  bleedMm: string;
+};
+
+const emptyPrintSize: LinePrintSize = {
+  width: "",
+  height: "",
+  unit: "mm",
+  bleedMm: "3",
+};
+
 const emptyActionState: AIOrderActionState = { message: "" };
 
 function CheckThis({ show }: { show: boolean }) {
@@ -53,6 +67,7 @@ export function MessageOrderReview({
   const [message, setMessage] = useState("");
   const [extracted, setExtracted] = useState<ExtractOrder | null>(null);
   const [prices, setPrices] = useState<string[]>([]);
+  const [printSizes, setPrintSizes] = useState<LinePrintSize[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
   const [extractErrorRetryable, setExtractErrorRetryable] = useState(false);
@@ -76,6 +91,7 @@ export function MessageOrderReview({
     setCopyMessage("");
     setExtracted(null);
     setPrices([]);
+    setPrintSizes([]);
 
     if (!message.trim()) {
       setExtractError("Paste the customer's message first.");
@@ -122,6 +138,7 @@ export function MessageOrderReview({
           return service?.base_price == null ? "" : String(service.base_price);
         }),
       );
+      setPrintSizes(parsed.data.items.value.map(() => ({ ...emptyPrintSize })));
     } catch {
       setExtractError("Unable to reach the extraction service. Your pasted message is still here.");
       setExtractErrorRetryable(true);
@@ -222,6 +239,7 @@ export function MessageOrderReview({
       ],
     }));
     setPrices((current) => [...current, ""]);
+    setPrintSizes((current) => [...current, { ...emptyPrintSize }]);
   }
 
   function removeItem(index: number) {
@@ -234,6 +252,17 @@ export function MessageOrderReview({
       },
     }));
     setPrices((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setPrintSizes((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
+  function updatePrintSize(index: number, patch: Partial<LinePrintSize>) {
+    setPrintSizes((current) =>
+      current.map((size, sizeIndex) =>
+        sizeIndex === index ? { ...size, ...patch } : size,
+      ),
+    );
   }
 
   async function copySuggestedReply() {
@@ -296,6 +325,7 @@ export function MessageOrderReview({
             if (extracted) {
               setExtracted(null);
               setPrices([]);
+              setPrintSizes([]);
               setExtractError("Message changed. Extract the updated message before creating an order.");
               setExtractErrorRetryable(false);
             }
@@ -415,6 +445,7 @@ export function MessageOrderReview({
                 const quantityMissing =
                   item.quantity.value === null ||
                   missing(item.quantity.confidence, item.quantity.value);
+                const printSize = printSizes[index] ?? emptyPrintSize;
                 return (
                   <div className="space-y-3 border-b border-slate-200 pb-4" key={index}>
                     <div className="flex items-start justify-between gap-3">
@@ -513,6 +544,74 @@ export function MessageOrderReview({
                         />
                       </div>
                     </div>
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium" htmlFor={`item-print-width-${index}`}>
+                          Print width (optional)
+                        </label>
+                        <Input
+                          id={`item-print-width-${index}`}
+                          min="0.01"
+                          onChange={(event) =>
+                            updatePrintSize(index, { width: event.target.value })
+                          }
+                          step="any"
+                          type="number"
+                          value={printSize.width}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium" htmlFor={`item-print-height-${index}`}>
+                          Print height (optional)
+                        </label>
+                        <Input
+                          id={`item-print-height-${index}`}
+                          min="0.01"
+                          onChange={(event) =>
+                            updatePrintSize(index, { height: event.target.value })
+                          }
+                          step="any"
+                          type="number"
+                          value={printSize.height}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium" htmlFor={`item-print-unit-${index}`}>
+                          Size unit
+                        </label>
+                        <select
+                          className="h-11 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-900"
+                          id={`item-print-unit-${index}`}
+                          onChange={(event) => {
+                            const unit = (["mm", "cm", "in", "ft"] as const).find(
+                              (candidate) => candidate === event.target.value,
+                            );
+                            if (unit) updatePrintSize(index, { unit });
+                          }}
+                          value={printSize.unit}
+                        >
+                          <option value="mm">mm</option>
+                          <option value="cm">cm</option>
+                          <option value="in">in</option>
+                          <option value="ft">ft</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium" htmlFor={`item-bleed-${index}`}>
+                          Bleed (mm)
+                        </label>
+                        <Input
+                          id={`item-bleed-${index}`}
+                          min="0"
+                          onChange={(event) =>
+                            updatePrintSize(index, { bleedMm: event.target.value })
+                          }
+                          step="any"
+                          type="number"
+                          value={printSize.bleedMm}
+                        />
+                      </div>
+                    </div>
                     <div>
                       <label className="mb-1.5 block text-sm font-medium" htmlFor={`item-notes-${index}`}>
                         Item notes
@@ -578,15 +677,29 @@ export function MessageOrderReview({
                   dueDate: extracted.deadline.value,
                   deliveryAddress: extracted.delivery_address.value,
                   sourceMessage: message,
-                  items: extracted.items.value.map((item, index) => ({
-                    serviceId: item.service_id.value,
-                    quantity: item.quantity.value,
-                    unitPrice: prices[index] ? Number(prices[index]) : null,
-                    rawText: item.raw_text.value,
-                    size: item.size.value,
-                    material: item.material.value,
-                    notes: item.notes.value,
-                  })),
+                  items: extracted.items.value.map((item, index) => {
+                    const linePrintSize = printSizes[index] ?? emptyPrintSize;
+                    return {
+                      serviceId: item.service_id.value,
+                      quantity: item.quantity.value,
+                      unitPrice: prices[index] ? Number(prices[index]) : null,
+                      rawText: item.raw_text.value,
+                      size: item.size.value,
+                      material: item.material.value,
+                      notes: item.notes.value,
+                      printWidth: linePrintSize.width
+                        ? Number(linePrintSize.width)
+                        : null,
+                      printHeight: linePrintSize.height
+                        ? Number(linePrintSize.height)
+                        : null,
+                      printUnit:
+                        linePrintSize.width && linePrintSize.height
+                          ? linePrintSize.unit
+                          : null,
+                      bleedMm: Number(linePrintSize.bleedMm || "3"),
+                    };
+                  }),
                 })}
               />
               {state.message && (

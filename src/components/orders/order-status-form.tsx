@@ -14,9 +14,11 @@ import {
 export function OrderStatusForm({
   action,
   currentStatus,
+  hasFailedPreflight,
 }: {
   action: (state: OrderActionState, formData: FormData) => Promise<OrderActionState>;
   currentStatus: OrderStatus;
+  hasFailedPreflight: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, { message: "" });
   const [confirmationStatus, setConfirmationStatus] =
@@ -31,19 +33,30 @@ export function OrderStatusForm({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         {forwardStatus && (
-          <form action={formAction}>
+          hasFailedPreflight && forwardStatus === "in_progress" ? (
             <button
               className="h-10 rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
               disabled={pending}
-              name="status"
-              type="submit"
-              value={forwardStatus}
+              onClick={() => setConfirmationStatus(forwardStatus)}
+              type="button"
             >
-              {pending
-                ? "Updating…"
-                : getOrderStatusActionLabel(forwardStatus)}
+              {getOrderStatusActionLabel(forwardStatus)}
             </button>
-          </form>
+          ) : (
+            <form action={formAction}>
+              <button
+                className="h-10 rounded bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+                disabled={pending}
+                name="status"
+                type="submit"
+                value={forwardStatus}
+              >
+                {pending
+                  ? "Updating…"
+                  : getOrderStatusActionLabel(forwardStatus)}
+              </button>
+            </form>
+          )
         )}
         {currentStatus === "delivered" && (
           <p className="text-sm text-slate-600">
@@ -100,20 +113,34 @@ export function OrderStatusForm({
             value={confirmationStatus}
           />
           <p className="text-sm font-medium">
-            Confirm moving this order to{" "}
+            {hasFailedPreflight && confirmationStatus === "in_progress"
+              ? "Artwork preflight has failed. Confirm that you want to override the warning and start production?"
+              : "Confirm moving this order to "}
+            {!(hasFailedPreflight && confirmationStatus === "in_progress") && (
+              <>
             {getOrderStatusLabel(confirmationStatus).toLowerCase()}?
+              </>
+            )}
           </p>
           <label
             className="block text-sm font-medium"
             htmlFor="status-change-reason"
           >
-            Reason <span className="font-normal text-slate-500">(optional)</span>
+            Reason{" "}
+            <span className="font-normal text-slate-500">
+              {hasFailedPreflight && confirmationStatus === "in_progress"
+                ? "(required)"
+                : "(optional)"}
+            </span>
           </label>
           <textarea
             className="min-h-20 w-full rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             id="status-change-reason"
             maxLength={500}
             name="reason"
+            required={
+              hasFailedPreflight && confirmationStatus === "in_progress"
+            }
           />
           <div className="flex gap-2">
             <button

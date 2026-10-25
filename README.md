@@ -45,6 +45,33 @@ Studio SQL editor. The seed is repeatable and connects the demo workspace to
 that account. Demo email addresses use the reserved `example.com` domain and
 the names and phone numbers are synthetic.
 
+## Artwork upload and preflight
+
+Each order line can include an optional print width and height, a unit
+(`mm`, `cm`, `in`, or `ft`), and bleed (3 mm by default). On the order detail
+page, upload PNG, JPG, or WebP artwork up to 25 MB. The browser uploads directly
+to the private `artwork` Storage bucket using a signed upload URL; the server
+checks the image signature, records the file, and runs preflight automatically.
+PDF is not supported yet and is labelled “PDF preflight coming later.”
+
+The report checks effective DPI, aspect ratio, colour space, bleed, safe zone,
+sharpness, transparency, and file size. AI notes are optional suggestions and
+never affect the report status. When `AI_PROVIDER`, `AI_MODEL`, and
+`AI_API_KEY` are configured for a vision-capable model, a downscaled image is
+reviewed for possible tiny text, low contrast, watermarks, and pixelation.
+Starting production is blocked when an artwork report fails; an authorized
+user can override the block by confirming and providing a reason, which is
+saved in order history.
+
+Apply the latest Supabase migration (`supabase db reset` locally or
+`supabase db push` for a linked hosted project) before testing upload. To
+regenerate the committed demo images and run the image-engine tests:
+
+```powershell
+npm run fixtures:artwork
+npm test -- src/lib/preflight
+```
+
 ## Use a hosted Supabase project
 
 1. Create a Supabase project and copy its Project URL and publishable key into
@@ -97,6 +124,6 @@ npm run build
 ## Current scope
 
 The login/signup flow, owner workspace provisioning, tenant-isolated database,
-private order-file bucket, customer management, order creation and status
-history, and data-backed dashboard are implemented. Quote generation, AI
-extraction, and public tracking UI are not included in the current scope.
+private order and artwork buckets, customer management, order creation and
+status history, artwork preflight, quote generation, AI extraction, and public
+tracking UI are implemented.

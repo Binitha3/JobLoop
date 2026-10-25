@@ -5,6 +5,7 @@ type GenerateStructuredInput<TSchema extends z.ZodType> = {
   system: string;
   user: string;
   schema: TSchema;
+  image?: { mimeType: string; base64: string };
 };
 
 type Provider = "openai" | "anthropic" | "google";
@@ -72,6 +73,7 @@ async function requestProvider(
   apiKey: string,
   system: string,
   user: string,
+  image?: { mimeType: string; base64: string },
 ): Promise<ProviderResponse> {
   const controller = new AbortController();
   let timedOut = false;
@@ -95,7 +97,20 @@ async function requestProvider(
         model,
         messages: [
           { role: "system", content: `${system}\nReturn JSON only; do not use markdown.` },
-          { role: "user", content: user },
+          {
+            role: "user",
+            content: image
+              ? [
+                  { type: "text", text: user },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${image.mimeType};base64,${image.base64}`,
+                    },
+                  },
+                ]
+              : user,
+          },
         ],
         response_format: { type: "json_object" },
       });
@@ -110,14 +125,42 @@ async function requestProvider(
         model,
         max_tokens: 4096,
         system: `${system}\nReturn JSON only; do not use markdown.`,
-        messages: [{ role: "user", content: user }],
+        messages: [{
+          role: "user",
+          content: image
+            ? [
+                { type: "text", text: user },
+                {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: image.mimeType,
+                    data: image.base64,
+                  },
+                },
+              ]
+            : user,
+        }],
       });
     } else {
       url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       headers = { "Content-Type": "application/json" };
       body = JSON.stringify({
         systemInstruction: { parts: [{ text: `${system}\nReturn JSON only; do not use markdown.` }] },
-        contents: [{ role: "user", parts: [{ text: user }] }],
+        contents: [{
+          role: "user",
+          parts: image
+            ? [
+                { text: user },
+                {
+                  inlineData: {
+                    mimeType: image.mimeType,
+                    data: image.base64,
+                  },
+                },
+              ]
+            : [{ text: user }],
+        }],
         generationConfig: { responseMimeType: "application/json" },
       });
     }
@@ -220,12 +263,13 @@ async function requestWithRetries(
   apiKey: string,
   system: string,
   user: string,
+  image?: { mimeType: string; base64: string },
 ): Promise<ProviderResponse> {
   let lastError: AIServiceError | undefined;
 
   for (let attempt = 0; attempt <= retryDelaysMs.length; attempt += 1) {
     try {
-      return await requestProvider(provider, model, apiKey, system, user);
+      return await requestProvider(provider, model, apiKey, system, user, image);
     } catch (error) {
       lastError = classifyProviderError(error);
       if (!isRetryable(lastError) || attempt === retryDelaysMs.length) throw lastError;
@@ -243,15 +287,16 @@ async function requestWithFallback(
   apiKey: string,
   system: string,
   user: string,
+  image?: { mimeType: string; base64: string },
 ): Promise<ProviderResponse> {
   try {
-    return await requestWithRetries(provider, model, apiKey, system, user);
+    return await requestWithRetries(provider, model, apiKey, system, user, image);
   } catch (error) {
     const primaryError = classifyProviderError(error);
     if (primaryError.kind !== "temporary" || !fallbackModel) throw primaryError;
 
     try {
-      return await requestProvider(provider, fallbackModel, apiKey, system, user);
+      return await requestProvider(provider, fallbackModel, apiKey, system, user, image);
     } catch (fallbackError) {
       const classifiedFallbackError = classifyProviderError(fallbackError);
       throw new AIServiceError(
@@ -267,6 +312,7 @@ export async function generateStructured<TSchema extends z.ZodType>({
   system,
   user,
   schema,
+  image,
 }: GenerateStructuredInput<TSchema>): Promise<z.infer<TSchema>> {
   const { provider, model, fallbackModel, apiKey } = getAIConfig();
   let prompt = user;
@@ -280,6 +326,7 @@ export async function generateStructured<TSchema extends z.ZodType>({
       apiKey,
       system,
       prompt,
+      image,
     );
     let decoded: unknown;
 

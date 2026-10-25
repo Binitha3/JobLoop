@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "fixtures:artwork": "tsx scripts/make-fixtures.ts",
     "test": "vitest run",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"
@@ -20,6 +21,7 @@
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "sharp": "^0.35.5",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },
@@ -32,6 +34,7 @@
     "eslint-config-next": "16.4.3",
     "supabase": "^2.122.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^3.2.7"
   }

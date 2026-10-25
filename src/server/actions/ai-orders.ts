@@ -14,15 +14,30 @@ const createOrderPayloadSchema = z.object({
   deliveryAddress: z.string().trim().max(1000).nullable(),
   sourceMessage: z.string().min(1).max(10_000),
   items: z.array(
-    z.object({
-      serviceId: z.string().uuid(),
-      quantity: z.number().positive().max(1_000_000),
-      unitPrice: z.number().min(0).max(1_000_000_000).nullable(),
-      rawText: z.string().trim().max(1000),
-      size: z.string().trim().max(300).nullable(),
-      material: z.string().trim().max(300).nullable(),
-      notes: z.string().trim().max(1000).nullable(),
-    }),
+    z
+      .object({
+        serviceId: z.string().uuid(),
+        quantity: z.number().positive().max(1_000_000),
+        unitPrice: z.number().min(0).max(1_000_000_000).nullable(),
+        rawText: z.string().trim().max(1000),
+        size: z.string().trim().max(300).nullable(),
+        material: z.string().trim().max(300).nullable(),
+        notes: z.string().trim().max(1000).nullable(),
+        printWidth: z.number().positive().max(100_000).nullable().optional(),
+        printHeight: z.number().positive().max(100_000).nullable().optional(),
+        printUnit: z.enum(["mm", "cm", "in", "ft"]).nullable().optional(),
+        bleedMm: z.number().min(0).max(1_000).optional(),
+      })
+      .superRefine((item, context) => {
+        const hasWidth = item.printWidth != null;
+        const hasHeight = item.printHeight != null;
+        if (hasWidth !== hasHeight || (hasWidth && !item.printUnit)) {
+          context.addIssue({
+            code: "custom",
+            message: "Enter both print dimensions and their unit.",
+          });
+        }
+      }),
   ).min(1).max(50),
 });
 
@@ -72,6 +87,10 @@ export async function createOrderFromMessage(
       size: item.size,
       material: item.material,
       notes: item.notes,
+      print_width: item.printWidth ?? null,
+      print_height: item.printHeight ?? null,
+      print_unit: item.printUnit ?? null,
+      bleed_mm: item.bleedMm ?? 3,
     })),
     p_due_date: parsed.data.dueDate,
     p_delivery_address: parsed.data.deliveryAddress,

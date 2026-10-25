@@ -22,6 +22,10 @@ type LineItem = {
   serviceId: string;
   quantity: string;
   unitPrice: string;
+  printWidth: string;
+  printHeight: string;
+  printUnit: "mm" | "cm" | "in" | "ft";
+  bleedMm: string;
 };
 
 const sourceChannels = [
@@ -46,7 +50,15 @@ export function OrderForm({
   const [state, formAction, pending] = useActionState(action, { message: "" });
   const [isNewCustomer, setIsNewCustomer] = useState(customers.length === 0);
   const [items, setItems] = useState<LineItem[]>([
-    { serviceId: "", quantity: "1", unitPrice: "" },
+    {
+      serviceId: "",
+      quantity: "1",
+      unitPrice: "",
+      printWidth: "",
+      printHeight: "",
+      printUnit: "mm",
+      bleedMm: "3",
+    },
   ]);
   const total = items.reduce(
     (sum, item) =>
@@ -184,7 +196,15 @@ export function OrderForm({
             onClick={() =>
               setItems((current) => [
                 ...current,
-                { serviceId: "", quantity: "1", unitPrice: "" },
+                {
+                  serviceId: "",
+                  quantity: "1",
+                  unitPrice: "",
+                  printWidth: "",
+                  printHeight: "",
+                  printUnit: "mm",
+                  bleedMm: "3",
+                },
               ])
             }
             type="button"
@@ -290,6 +310,86 @@ export function OrderForm({
                     Remove
                   </button>
                 )}
+                <div className="grid gap-3 sm:col-span-4 sm:grid-cols-4">
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium"
+                      htmlFor={`print-width-${index}`}
+                    >
+                      Print width (optional)
+                    </label>
+                    <Input
+                      id={`print-width-${index}`}
+                      min="0.01"
+                      onChange={(event) =>
+                        updateItem(index, { printWidth: event.target.value })
+                      }
+                      step="any"
+                      type="number"
+                      value={item.printWidth}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium"
+                      htmlFor={`print-height-${index}`}
+                    >
+                      Print height (optional)
+                    </label>
+                    <Input
+                      id={`print-height-${index}`}
+                      min="0.01"
+                      onChange={(event) =>
+                        updateItem(index, { printHeight: event.target.value })
+                      }
+                      step="any"
+                      type="number"
+                      value={item.printHeight}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium"
+                      htmlFor={`print-unit-${index}`}
+                    >
+                      Size unit
+                    </label>
+                    <select
+                      className="h-11 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-900"
+                      id={`print-unit-${index}`}
+                      onChange={(event) => {
+                        const unit = (["mm", "cm", "in", "ft"] as const).find(
+                          (candidate) => candidate === event.target.value,
+                        );
+                        if (unit) updateItem(index, { printUnit: unit });
+                      }}
+                      value={item.printUnit}
+                    >
+                      <option value="mm">mm</option>
+                      <option value="cm">cm</option>
+                      <option value="in">in</option>
+                      <option value="ft">ft</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      className="mb-1.5 block text-sm font-medium"
+                      htmlFor={`bleed-${index}`}
+                    >
+                      Bleed (mm)
+                    </label>
+                    <Input
+                      id={`bleed-${index}`}
+                      min="0"
+                      onChange={(event) =>
+                        updateItem(index, { bleedMm: event.target.value })
+                      }
+                      step="any"
+                      type="number"
+                      value={item.bleedMm}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
             <input
@@ -300,6 +400,11 @@ export function OrderForm({
                   service_id: item.serviceId,
                   quantity: Number(item.quantity),
                   unit_price: Number(item.unitPrice),
+                  print_width: item.printWidth ? Number(item.printWidth) : null,
+                  print_height: item.printHeight ? Number(item.printHeight) : null,
+                  print_unit:
+                    item.printWidth && item.printHeight ? item.printUnit : null,
+                  bleed_mm: Number(item.bleedMm || "3"),
                 })),
               )}
             />
