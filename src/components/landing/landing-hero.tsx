@@ -35,7 +35,7 @@ const styles = `
 .hero-frame {
   position: relative;
   width: min(100vw, calc(1440 * var(--u)));
-  height: min(100svh, calc(940 * var(--u)));
+  height: calc(1200 * var(--u));
   margin: 0 auto;
   overflow: visible;
 }
@@ -75,7 +75,7 @@ const styles = `
 }
 .hero-subline span { display: block; }
 .carousel {
-  position: absolute; z-index: 1; top: 0; left: calc(50% - 50vw); width: 100vw; height: 100%;
+  position: absolute; z-index: 1; top: calc(500 * var(--u)); left: calc(50% - 50vw); width: 100vw; height: calc(700 * var(--u));
   overflow: visible; perspective: 1500px; perspective-origin: 50% 50%;
   touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; contain: layout paint;
 }
@@ -87,7 +87,7 @@ const styles = `
 }
 .carousel-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cta-ring {
-  position: absolute; z-index: 15; top: calc(440 * var(--u)); left: 50%; width: calc(190 * var(--u)); height: calc(74 * var(--u));
+  position: absolute; z-index: 15; top: calc(474 * var(--u)); left: 50%; width: calc(190 * var(--u)); height: calc(74 * var(--u));
   display: grid; place-items: center; border: 1px dashed #8290a0; border-radius: 999px; translate: -50% 0;
 }
 .cta-button {
@@ -95,12 +95,13 @@ const styles = `
   border-radius: 999px; color: white; background: var(--accent); font-size: calc(18 * var(--u)); font-weight: 500; text-decoration: none;
 }
 .hinglish-note, .approval-note {
-  position: absolute; z-index: 16; color: var(--accent); font-size: calc(15 * var(--u)); font-weight: 500;
+  position: absolute; z-index: 16; color: var(--accent); font-size: calc(18 * var(--u)); font-weight: 500;
   white-space: nowrap; pointer-events: none;
 }
-.hinglish-note { top: calc(330 * var(--u)); right: calc(82 * var(--u)); transform: rotate(16deg); }
-.hinglish-arrow { position: absolute; z-index: 8; top: calc(356 * var(--u)); right: calc(84 * var(--u)); width: calc(150 * var(--u)); height: calc(160 * var(--u)); overflow: visible; }
-.approval-note { top: calc(464 * var(--u)); right: calc(50% + 120 * var(--u)); transform: rotate(-7deg); }
+.hinglish-note { top: calc(458 * var(--u)); left: calc(50% + 200 * var(--u)); transform: rotate(6deg); }
+.hinglish-arrow { position: absolute; z-index: 8; top: calc(488 * var(--u)); left: calc(50% + 215 * var(--u)); width: calc(90 * var(--u)); height: calc(60 * var(--u)); overflow: visible; }
+.approval-note { top: calc(492 * var(--u)); right: calc(50% + 103 * var(--u)); display: flex; align-items: center; gap: calc(8 * var(--u)); transform: rotate(-4deg); }
+.approval-arrow { width: calc(36 * var(--u)); height: calc(14 * var(--u)); overflow: visible; flex: none; }
 .arrow-note path { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fps-counter {
   position: fixed; z-index: 80; right: 12px; bottom: 12px; padding: 5px 8px; background: #151515;
@@ -128,10 +129,11 @@ const styles = `
   .hero-subline { position: relative; top: auto; left: auto; width: min(100%, 420px); margin-top: 16px; font-size: 15px; line-height: 1.55; }
   .hero-subline span { display: inline; }
   .hero-subline span + span::before { content: " "; }
-  .cta-ring { position: relative; top: auto; left: auto; flex: 0 0 62px; width: 174px; height: 62px; margin-top: 18px; translate: none; }
+  .cta-ring { position: relative; top: auto; left: auto; order: 1; flex: 0 0 62px; width: 174px; height: 62px; margin-top: 18px; translate: none; }
   .cta-button { width: 158px; height: 50px; font-size: 16px; }
-  .hinglish-note, .hinglish-arrow, .approval-note { display: none; }
-  .carousel { position: relative; top: auto; left: 0; width: 100vw; height: 340px; flex: 0 0 340px; margin-top: 12px; overflow: visible; perspective: 900px; }
+  .hinglish-note, .hinglish-arrow, .approval-arrow { display: none; }
+  .approval-note { position: relative; top: auto; right: auto; order: 2; margin-top: 10px; font-size: 14px; transform: none; }
+  .carousel { position: relative; top: auto; left: 0; order: 3; width: 100vw; height: 340px; flex: 0 0 340px; margin-top: 12px; overflow: visible; perspective: 900px; }
   .carousel-card { width: 160px; height: 268px; border-radius: 4px; }
   .info-sections { grid-template-columns: 1fr; gap: 32px; padding: 50px 24px 72px; }
 }
@@ -232,7 +234,7 @@ export function LandingHero() {
       }
 
       const centerX = measured.width / 2;
-      const centerY = isMobile ? 170 : 700 * scale;
+      const centerY = isMobile ? 170 : 330 * scale;
       const pitch = isMobile ? 170 : 280;
       const denominator = isMobile ? 215 : 700;
       const totalWidth = cards.length * pitch;
@@ -241,9 +243,9 @@ export function LandingHero() {
         const t = ((raw % totalWidth) + totalWidth) % totalWidth - totalWidth / 2;
         const distance = Math.abs(t);
         const d = distance / denominator;
-        const q = Math.min(d, 1.5);
+        const q = Math.min(d, 1.2);
         const widthU = isMobile ? 160 : 250 + 60 * d * d;
-        const heightU = isMobile ? 268 : 420 + 130 * Math.pow(q, 2.6);
+        const heightU = isMobile ? 268 : 420 + 70 * Math.pow(q, 2.6);
         const pushed = t * (1 + 0.083 * Math.pow(t / denominator, 2));
         const edgeScale = 1 + Math.min(d, 1) * 0.08;
         const scaleX = (isMobile ? widthU / 160 : widthU / 250) * edgeScale;
@@ -350,11 +352,17 @@ export function LandingHero() {
         </p>
 
         <div className="hinglish-note">Hinglish works</div>
-        <svg className="arrow-note hinglish-arrow" viewBox="0 0 150 160" aria-hidden="true">
-          <path d="M125 2C117 46 103 72 70 98C45 116 28 132 24 148" />
-          <path d="M16 138L24 150L34 140" />
+        <svg className="arrow-note hinglish-arrow" viewBox="0 0 90 60" aria-hidden="true">
+          <path d="M72 2C70 28 48 46 16 54" />
+          <path d="M26 44L15 54L28 60" />
         </svg>
-        <div className="approval-note">You approve it first</div>
+        <div className="approval-note">
+          <span>You approve it first</span>
+          <svg className="arrow-note approval-arrow" viewBox="0 0 36 14" aria-hidden="true">
+            <path d="M2 8C12 3 22 3 32 7" />
+            <path d="M26 2L33 7L26 12" />
+          </svg>
+        </div>
         <div className="cta-ring">
           <a className="cta-button" href="/signup">Start a job</a>
         </div>
