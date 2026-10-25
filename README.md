@@ -72,6 +72,22 @@ npm run fixtures:artwork
 npm test -- src/lib/preflight
 ```
 
+## Landing hero screenshots
+
+After changing workspace UI shown in the landing hero, rerun the capture script
+against the seeded demo workspace. Set `DEMO_PASSWORD` to the password of
+`demo@jobloop.local`; optionally set `JOBLOOP_URL` if the dev server is not at
+`http://127.0.0.1:3000`.
+
+```powershell
+$env:DEMO_PASSWORD = "your-demo-password"
+npx playwright install chromium
+npx tsx scripts/capture-hero-shots.ts
+```
+
+The script requires the seeded demo workspace and a locally installed Playwright
+Chromium browser. It updates the ten WebP screenshots in `public/hero/`.
+
 ## Use a hosted Supabase project
 
 1. Create a Supabase project and copy its Project URL and publishable key into
